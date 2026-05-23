@@ -675,12 +675,16 @@ configure_codex() {
   echo "  4) 自定义输入"
   read -r -p "  请输入选项 [1]: " model_choice < /dev/tty || model_choice=""
   model_choice="${model_choice:-1}"
+  model_choice="${model_choice//$'\r'/}"
 
   case "$model_choice" in
     1) CODEX_MODEL="deepseek-v4-pro" ;;
     2) CODEX_MODEL="deepseek-chat" ;;
     3) CODEX_MODEL="deepseek-reasoner" ;;
-    4) read -r -p "  请输入模型名称: " CODEX_MODEL < /dev/tty || CODEX_MODEL="deepseek-v4-pro" ;;
+    4) 
+      read -r -p "  请输入模型名称: " CODEX_MODEL < /dev/tty || CODEX_MODEL="deepseek-v4-pro" 
+      CODEX_MODEL="${CODEX_MODEL//$'\r'/}"
+      ;;
     *) CODEX_MODEL="deepseek-v4-pro" ;;
   esac
 
@@ -708,12 +712,14 @@ configure_auth() {
   local api_key=""
   while [[ -z "$api_key" ]]; do
     read -r -s -p "  API Key (sk-...): " api_key < /dev/tty || api_key=""
+    api_key="${api_key//$'\r'/}"
     echo
     if [[ -z "$api_key" ]]; then
       warn "API Key 不能为空，请重新输入"
     elif [[ "${#api_key}" -lt 20 ]]; then
       warn "API Key 看起来太短，请确认是否正确"
       read -r -p "  继续使用此 Key？[y/N] " yn < /dev/tty || yn="N"
+      yn="${yn//$'\r'/}"
       [[ "$yn" =~ ^[Yy]$ ]] || api_key=""
     fi
   done
