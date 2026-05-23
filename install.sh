@@ -688,13 +688,9 @@ configure_codex() {
     *) CODEX_MODEL="deepseek-v4-pro" ;;
   esac
 
-  cat > "$CONFIG_FILE" << EOF
-# Codex CLI 配置 - 由 codex-deepseek-installer 生成
-# 修改后需重启代理生效
-
-model = "${CODEX_MODEL}"
-openai_base_url = "http://127.0.0.1:${PROXY_PORT}/v1"
-EOF
+  # 使用 printf 写入，完全避免继承 shell 的行结束符
+  printf '# Codex CLI 配置 - 由 codex-deepseek-installer 生成\n# 修改后需重启代理生效\n\nmodel = "%s"\nopenai_base_url = "http://127.0.0.1:%s/v1"\n' \
+    "$CODEX_MODEL" "$PROXY_PORT" > "$CONFIG_FILE"
 
   success "config.toml 已写入 ✓  (model: $CODEX_MODEL)"
 }
@@ -724,13 +720,9 @@ configure_auth() {
     fi
   done
 
-  # 写入 auth.json（权限设为 600，仅自己可读）
-  cat > "$AUTH_FILE" << EOF
-{
-  "auth_mode": "apikey",
-  "OPENAI_API_KEY": "${api_key}"
-}
-EOF
+  # 使用 printf 写入，完全避免继承 shell 的行结束符
+  printf '{\n  "auth_mode": "apikey",\n  "OPENAI_API_KEY": "%s"\n}\n' \
+    "$api_key" > "$AUTH_FILE"
   chmod 600 "$AUTH_FILE"
 
   success "API Key 已保存到 $AUTH_FILE (权限 600) ✓"
