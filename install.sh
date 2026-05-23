@@ -688,9 +688,10 @@ configure_codex() {
     *) CODEX_MODEL="deepseek-v4-pro" ;;
   esac
 
-  # 使用 printf 写入，完全避免继承 shell 的行结束符
-  printf '# Codex CLI 配置 - 由 codex-deepseek-installer 生成\n# 修改后需重启代理生效\n\nmodel = "%s"\nopenai_base_url = "http://127.0.0.1:%s/v1"\n' \
+  # 仅写 ASCII 内容，避免 Windows 上多字节编码问题；强制去除 \r
+  printf 'model = "%s"\nopenai_base_url = "http://127.0.0.1:%s/v1"\n' \
     "$CODEX_MODEL" "$PROXY_PORT" > "$CONFIG_FILE"
+  tr -d '\r' < "$CONFIG_FILE" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE"
 
   success "config.toml 已写入 ✓  (model: $CODEX_MODEL)"
 }
@@ -720,9 +721,10 @@ configure_auth() {
     fi
   done
 
-  # 使用 printf 写入，完全避免继承 shell 的行结束符
+  # 写入并强制去除 \r，防止 Windows CRLF 污染 JSON
   printf '{\n  "auth_mode": "apikey",\n  "OPENAI_API_KEY": "%s"\n}\n' \
     "$api_key" > "$AUTH_FILE"
+  tr -d '\r' < "$AUTH_FILE" > "${AUTH_FILE}.tmp" && mv "${AUTH_FILE}.tmp" "$AUTH_FILE"
   chmod 600 "$AUTH_FILE"
 
   success "API Key 已保存到 $AUTH_FILE (权限 600) ✓"
@@ -734,9 +736,14 @@ setup_autostart() {
 
   local marker="# codex-deepseek-proxy auto-start"
 
+  # 如果旧配置存在，先删除再重写（避免残留使用 lsof 的旧版本）
   if grep -q "$marker" "$SHELL_RC" 2>/dev/null; then
-    warn "自动启动配置已存在于 $SHELL_RC，跳过"
-    return 0
+    info "更新 $SHELL_RC 中的旧版自动启动配置..."
+    if [[ "$OS" == "macos" ]]; then
+      sed -i '' "/# codex-deepseek-proxy auto-start/,/^unset _DS_PORT_IN_USE$/d" "$SHELL_RC"
+    else
+      sed -i "/# codex-deepseek-proxy auto-start/,/^unset _DS_PORT_IN_USE$/d" "$SHELL_RC"
+    fi
   fi
 
   cat >> "$SHELL_RC" << 'SHELLEOF'
