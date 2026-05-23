@@ -131,6 +131,27 @@ openai_base_url = "http://127.0.0.1:11435/v1"
 
 ## 🔧 代理管理
 
+### 代理无法连接？一键重启
+
+当出现以下错误时：
+
+```
+ERROR: No connection could be made because the target machine actively refused it. (os error 10061)
+```
+
+在 Git Bash 中执行：
+
+```bash
+curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/scripts/restart-proxy.sh" | bash
+```
+
+> 若 ghproxy 不可用，直接用：
+> ```bash
+> curl -fsSL "https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/scripts/restart-proxy.sh" | bash
+> ```
+
+---
+
 ```bash
 # 检查安装状态
 bash scripts/check.sh
