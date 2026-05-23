@@ -46,10 +46,18 @@ else
   fail "代理文件缺失: $PROXY_FILE"
 fi
 
-# ws 依赖
-if [[ -d "$CODEX_DIR/node_modules/ws" ]]; then
-  WS_VER="$(node -e "console.log(require('$CODEX_DIR/node_modules/ws/package.json').version)" 2>/dev/null || echo '?')"
-  ok "ws 依赖: v$WS_VER"
+# ws 依赖（本地 > Homebrew 全局 > npm 全局）
+_ws_local="$CODEX_DIR/node_modules/ws"
+_ws_brew="/opt/homebrew/lib/node_modules/ws"
+_ws_ver=""
+if [[ -d "$_ws_local" ]]; then
+  _ws_ver="$(node -e "console.log(require('$_ws_local/package.json').version)" 2>/dev/null || echo '?')"
+  ok "ws 依赖: v$_ws_ver (本地 ~/.codex/node_modules)"
+elif [[ -d "$_ws_brew" ]]; then
+  _ws_ver="$(node -e "console.log(require('$_ws_brew/package.json').version)" 2>/dev/null || echo '?')"
+  ok "ws 依赖: v$_ws_ver (Homebrew 全局)"
+elif node -e "require('ws')" 2>/dev/null; then
+  ok "ws 依赖: 全局可用"
 else
   fail "ws 依赖缺失（运行: npm install --prefix ~/.codex ws）"
 fi

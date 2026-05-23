@@ -76,7 +76,7 @@ function itemsToMessages(input) {
       const callId = item.call_id || item.id || ('call_' + Date.now());
       const msg = {
         role: 'assistant',
-        content: '',
+        content: null,           // must be null (not '') when only tool_calls present
         tool_calls: [{
           id: callId,
           type: 'function',
@@ -126,7 +126,9 @@ function fixOrphanedToolResults(input, lastToolCalls) {
       if (!hasPreceding) {
         const tc = lastToolCalls.find(t => t.call_id === item.call_id)
           || lastToolCalls[0];
-        if (tc) result.push(tc);
+        // Ensure the injected function_call has the SAME call_id as the output.
+        // If using fallback (lastToolCalls[0]) the ids may differ; create a copy.
+        if (tc) result.push(tc.call_id === item.call_id ? tc : { ...tc, call_id: item.call_id });
       }
     }
     result.push(item);
