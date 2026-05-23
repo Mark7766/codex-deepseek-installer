@@ -62,7 +62,8 @@ detect_os() {
   case "$(uname -s)" in
     Darwin) OS="macos" ;;
     Linux)  OS="linux" ;;
-    *)      die "不支持的操作系统: $(uname -s)，仅支持 macOS 和 Linux" ;;
+    MINGW*|MSYS*|CYGWIN*) OS="windows" ;;
+    *)      die "不支持的操作系统: $(uname -s)，仅支持 macOS, Linux 和 Windows (Git Bash)" ;;
   esac
   ARCH="$(uname -m)"
   info "检测到系统: ${OS} / ${ARCH}"
@@ -77,6 +78,15 @@ detect_shell_rc() {
     bash) SHELL_RC="$HOME/.bashrc" ;;
     *)    SHELL_RC="$HOME/.profile" ;;
   esac
+  
+  # 对于 Windows Git Bash，如果默认 shell 是 bash，确保 ~/.bashrc 会被加载
+  if [[ "$OS" == "windows" && ! -f "$SHELL_RC" ]]; then
+    touch "$SHELL_RC"
+    if [[ ! -f "$HOME/.bash_profile" ]]; then
+      echo "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi" > "$HOME/.bash_profile"
+    fi
+  fi
+  
   info "Shell 配置文件: $SHELL_RC"
 }
 
@@ -84,7 +94,13 @@ detect_shell_rc() {
 has_cmd() { command -v "$1" &>/dev/null; }
 
 # 检查端口是否被占用
-port_in_use() { lsof -ti:"$1" &>/dev/null 2>&1 || ss -tlnp 2>/dev/null | grep -q ":$1 "; }
+port_in_use() {
+  if [[ "$OS" == "windows" ]]; then
+    netstat -an | grep -q ":$1 "
+  else
+    lsof -ti:"$1" &>/dev/null 2>&1 || ss -tlnp 2>/dev/null | grep -q ":$1 "
+  fi
+}
 
 # 下载文件（优先 curl，备用 wget）
 download() {
@@ -724,7 +740,16 @@ setup_autostart() {
 
 # codex-deepseek-proxy auto-start
 # 由 codex-deepseek-installer 添加，每次新终端检查代理是否运行
-if ! lsof -ti:11435 >/dev/null 2>&1 && [ -f "$HOME/.codex/deepseek-proxy.mjs" ]; then
+_DS_PORT_IN_USE=false
+if command -v lsof >/dev/null 2>&1; then
+  lsof -ti:11435 >/dev/null 2>&1 && _DS_PORT_IN_USE=true
+elif command -v ss >/dev/null 2>&1; then
+  ss -tlnp 2>/dev/null | grep -q ":11435 " && _DS_PORT_IN_USE=true
+else
+  netstat -an 2>/dev/null | grep -q ":11435 " && _DS_PORT_IN_USE=true
+fi
+
+if [ "$_DS_PORT_IN_USE" = false ] && [ -f "$HOME/.codex/deepseek-proxy.mjs" ]; then
   _DS_KEY=$(node -e "
     try {
       const fs = require('fs'), os = require('os');
@@ -740,6 +765,7 @@ if ! lsof -ti:11435 >/dev/null 2>&1 && [ -f "$HOME/.codex/deepseek-proxy.mjs" ];
   fi
   unset _DS_KEY
 fi
+unset _DS_PORT_IN_USE
 SHELLEOF
 
   success "自动启动已添加到 $SHELL_RC ✓"
