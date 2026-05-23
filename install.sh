@@ -127,7 +127,7 @@ install_codex() {
     local current_ver
     current_ver="$(codex --version 2>/dev/null | head -1 || echo '未知')"
     warn "Codex 已安装: $current_ver"
-    read -r -p "  是否重新安装最新版本？[y/N] " yn
+    read -r -p "  是否重新安装最新版本？[y/N] " yn < /dev/tty || yn="N"
     [[ "$yn" =~ ^[Yy]$ ]] || { info "跳过 Codex 安装"; return 0; }
   fi
 
@@ -651,13 +651,13 @@ configure_codex() {
   echo "  1) deepseek-chat      (DeepSeek V3, 推荐 - 速度快，性价比高)"
   echo "  2) deepseek-reasoner  (DeepSeek R1, 深度推理 - 速度慢，质量高)"
   echo "  3) 自定义输入"
-  read -r -p "  请输入选项 [1]: " model_choice
+  read -r -p "  请输入选项 [1]: " model_choice < /dev/tty || model_choice=""
   model_choice="${model_choice:-1}"
 
   case "$model_choice" in
     1) CODEX_MODEL="deepseek-chat" ;;
     2) CODEX_MODEL="deepseek-reasoner" ;;
-    3) read -r -p "  请输入模型名称: " CODEX_MODEL ;;
+    3) read -r -p "  请输入模型名称: " CODEX_MODEL < /dev/tty || CODEX_MODEL="deepseek-chat" ;;
     *) CODEX_MODEL="deepseek-chat" ;;
   esac
 
@@ -684,13 +684,13 @@ configure_auth() {
 
   local api_key=""
   while [[ -z "$api_key" ]]; do
-    read -r -s -p "  API Key (sk-...): " api_key
+    read -r -s -p "  API Key (sk-...): " api_key < /dev/tty || api_key=""
     echo
     if [[ -z "$api_key" ]]; then
       warn "API Key 不能为空，请重新输入"
     elif [[ "${#api_key}" -lt 20 ]]; then
       warn "API Key 看起来太短，请确认是否正确"
-      read -r -p "  继续使用此 Key？[y/N] " yn
+      read -r -p "  继续使用此 Key？[y/N] " yn < /dev/tty || yn="N"
       [[ "$yn" =~ ^[Yy]$ ]] || api_key=""
     fi
   done
