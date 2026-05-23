@@ -108,7 +108,7 @@ Codex CLI v0.132+ 仅使用 OpenAI Responses API（包含 WebSocket 流式传输
 ### `~/.codex/config.toml`
 
 ```toml
-model = "deepseek-chat"              # 或 deepseek-reasoner
+model = "deepseek-v4-pro"            # 或 deepseek-chat / deepseek-reasoner
 openai_base_url = "http://127.0.0.1:11435/v1"
 ```
 
@@ -116,7 +116,8 @@ openai_base_url = "http://127.0.0.1:11435/v1"
 
 | 模型 | 说明 | 推荐场景 |
 |------|------|----------|
-| `deepseek-chat` | DeepSeek V3，速度快 | 日常编程，默认推荐 |
+| `deepseek-v4-pro` | DeepSeek V4 Pro，性能最强 | 默认推荐，最强代码能力 |
+| `deepseek-chat` | DeepSeek V3，速度快 | 日常编程，性价比高 |
 | `deepseek-reasoner` | DeepSeek R1，深度推理 | 复杂算法、架构设计 |
 
 ### `~/.codex/auth.json`（权限 600，不会上传）

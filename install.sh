@@ -648,17 +648,19 @@ configure_codex() {
   # 选择模型
   echo
   echo -e "  ${BOLD}请选择 DeepSeek 模型:${NC}"
-  echo "  1) deepseek-chat      (DeepSeek V3, 推荐 - 速度快，性价比高)"
-  echo "  2) deepseek-reasoner  (DeepSeek R1, 深度推理 - 速度慢，质量高)"
-  echo "  3) 自定义输入"
+  echo "  1) deepseek-v4-pro    (DeepSeek V4 Pro, 默认推荐 - 性能最强)"
+  echo "  2) deepseek-chat      (DeepSeek V3, 速度快，性价比高)"
+  echo "  3) deepseek-reasoner  (DeepSeek R1, 深度推理)"
+  echo "  4) 自定义输入"
   read -r -p "  请输入选项 [1]: " model_choice < /dev/tty || model_choice=""
   model_choice="${model_choice:-1}"
 
   case "$model_choice" in
-    1) CODEX_MODEL="deepseek-chat" ;;
-    2) CODEX_MODEL="deepseek-reasoner" ;;
-    3) read -r -p "  请输入模型名称: " CODEX_MODEL < /dev/tty || CODEX_MODEL="deepseek-chat" ;;
-    *) CODEX_MODEL="deepseek-chat" ;;
+    1) CODEX_MODEL="deepseek-v4-pro" ;;
+    2) CODEX_MODEL="deepseek-chat" ;;
+    3) CODEX_MODEL="deepseek-reasoner" ;;
+    4) read -r -p "  请输入模型名称: " CODEX_MODEL < /dev/tty || CODEX_MODEL="deepseek-v4-pro" ;;
+    *) CODEX_MODEL="deepseek-v4-pro" ;;
   esac
 
   cat > "$CONFIG_FILE" << EOF
