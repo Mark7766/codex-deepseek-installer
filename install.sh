@@ -637,13 +637,18 @@ PROXY_EOF
 
   # 安装 ws 依赖（本地安装到 ~/.codex/node_modules）
   info "安装代理依赖 ws ..."
-  npm install --prefix "$CODEX_DIR" ws \
+  local npm_prefix="$CODEX_DIR"
+  if [[ "$OS" == "windows" ]]; then
+    npm_prefix="$(cygpath -w "$CODEX_DIR")"
+  fi
+
+  npm install --prefix "$npm_prefix" ws \
     --registry "$NPM_REGISTRY_CN" \
     --save-exact \
     --no-fund \
     --no-audit \
     2>/dev/null \
-    || npm install --prefix "$CODEX_DIR" ws --save-exact --no-fund --no-audit \
+    || npm install --prefix "$npm_prefix" ws --save-exact --no-fund --no-audit \
     || die "ws 依赖安装失败"
 
   success "代理依赖安装完成 ✓"
@@ -758,8 +763,10 @@ if [ "$_DS_PORT_IN_USE" = false ] && [ -f "$HOME/.codex/deepseek-proxy.mjs" ]; t
     } catch {}
   " 2>/dev/null)
   if [ -n "$_DS_KEY" ]; then
+    _SCRIPT_PATH="$HOME/.codex/deepseek-proxy.mjs"
+    command -v cygpath >/dev/null 2>&1 && _SCRIPT_PATH=$(cygpath -w "$_SCRIPT_PATH")
     DEEPSEEK_API_KEY="$_DS_KEY" \
-      nohup node "$HOME/.codex/deepseek-proxy.mjs" \
+      nohup node "$_SCRIPT_PATH" \
       >> "$HOME/.codex/proxy.log" 2>&1 &
     disown
   fi
@@ -795,7 +802,14 @@ start_proxy() {
     return 0
   fi
 
-  DEEPSEEK_API_KEY="$api_key" nohup node "$PROXY_FILE" >> "$LOG_FILE" 2>&1 &
+  local node_script="$PROXY_FILE"
+  local log_output="$LOG_FILE"
+  if [[ "$OS" == "windows" ]]; then
+    node_script="$(cygpath -w "$PROXY_FILE")"
+    log_output="$(cygpath -w "$LOG_FILE")"
+  fi
+
+  DEEPSEEK_API_KEY="$api_key" nohup node "$node_script" >> "$LOG_FILE" 2>&1 &
   disown
 
   # 等待代理就绪
