@@ -7,7 +7,7 @@
 #  依赖: Node.js >= 18, npm
 #
 #  用法:
-#    curl -fsSL https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/install.sh | bash
+#    curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/install.sh | bash
 #    或克隆后执行: bash install.sh
 # =============================================================================
 set -euo pipefail
