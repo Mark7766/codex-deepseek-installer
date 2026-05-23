@@ -1,0 +1,10 @@
+{
+  "name": "deepseek-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local proxy: bridges OpenAI Responses API to DeepSeek Chat Completions",
+  "type": "module",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

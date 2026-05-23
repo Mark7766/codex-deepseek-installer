@@ -1,0 +1,21 @@
+# Codex CLI 配置文件模板
+# 安装脚本会将此文件复制到 ~/.codex/config.toml
+#
+# 完整配置参考: https://github.com/openai/codex
+
+# 使用 DeepSeek 模型
+# 可选值:
+#   deepseek-chat       → DeepSeek V3（推荐，稳定，速度快）
+#   deepseek-reasoner   → DeepSeek R1（深度推理，速度慢）
+#   deepseek-v4-pro     → 自定义部署模型（如有）
+model = "deepseek-chat"
+
+# 指向本地代理（将 Responses API 转换为 DeepSeek Chat Completions）
+openai_base_url = "http://127.0.0.1:11435/v1"
+
+# 禁用沙箱（使用 DeepSeek 时需要禁用，因为沙箱依赖 OpenAI 账号鉴权）
+# 注意：这允许 Codex 在无确认的情况下执行命令，请谨慎使用
+# sandbox = "none"
+
+# 自动审批级别（可选）
+# approval = "auto-edit"
