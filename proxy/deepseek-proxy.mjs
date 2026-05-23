@@ -27,6 +27,8 @@
 
 import http from 'node:http';
 import https from 'node:https';
+import net from 'node:net';
+import tls from 'node:tls';
 import { createRequire } from 'node:module';
 
 // Load ws from the local node_modules next to this file (installed by installer)
@@ -35,6 +37,65 @@ const { WebSocketServer } = _require('ws');
 
 const DEEPSEEK_BASE = 'api.deepseek.com';
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
+
+// Allow self-signed / corporate-proxy certificates (SSL inspection environments).
+// Set DEEPSEEK_VERIFY_TLS=1 to re-enable strict verification.
+const tlsRejectUnauthorized = process.env.DEEPSEEK_VERIFY_TLS === '1';
+
+// ─── HTTP CONNECT tunnel (respects HTTPS_PROXY / HTTP_PROXY env vars) ────────
+const systemProxy = process.env.HTTPS_PROXY || process.env.https_proxy ||
+                    process.env.HTTP_PROXY  || process.env.http_proxy || null;
+
+function buildHttpsAgent(proxyUrl) {
+  if (!proxyUrl) return new https.Agent({ rejectUnauthorized: tlsRejectUnauthorized });
+
+  let proxyHost, proxyPort;
+  try {
+    const u = new URL(proxyUrl);
+    proxyHost = u.hostname;
+    proxyPort = parseInt(u.port || '80', 10);
+  } catch {
+    console.warn('[deepseek-proxy] Invalid HTTPS_PROXY, connecting directly:', proxyUrl);
+    return new https.Agent({ rejectUnauthorized: tlsRejectUnauthorized });
+  }
+
+  class TunnelAgent extends https.Agent {
+    createConnection(options, callback) {
+      const targetHost = options.host || options.hostname;
+      const targetPort = options.port || 443;
+      const socket = net.createConnection(proxyPort, proxyHost);
+      socket.once('connect', () => {
+        socket.write(
+          `CONNECT ${targetHost}:${targetPort} HTTP/1.1\r\n` +
+          `Host: ${targetHost}:${targetPort}\r\n` +
+          `Proxy-Connection: keep-alive\r\n\r\n`
+        );
+        let buf = '';
+        const onData = (chunk) => {
+          buf += chunk.toString('binary');
+          if (!buf.includes('\r\n\r\n')) return;
+          socket.removeListener('data', onData);
+          if (/^HTTP\/1\.[01] 200/i.test(buf)) {
+            const tlsSock = tls.connect({
+              socket, host: targetHost, servername: targetHost,
+              rejectUnauthorized: tlsRejectUnauthorized,
+            });
+            tlsSock.once('secureConnect', () => callback(null, tlsSock));
+            tlsSock.once('error', callback);
+          } else {
+            callback(new Error(`Proxy CONNECT failed: ${buf.slice(0, 150)}`));
+          }
+        };
+        socket.on('data', onData);
+      });
+      socket.once('error', callback);
+    }
+  }
+  return new TunnelAgent();
+}
+
+if (systemProxy) console.log(`[deepseek-proxy] using system proxy → ${systemProxy}`);
+const httpsAgent = buildHttpsAgent(systemProxy);
 const PORT = parseInt(process.env.PORT || '11435', 10);
 
 const VALID_ROLES = new Set(['system', 'user', 'assistant', 'tool']);
@@ -167,6 +228,7 @@ function callDeepSeekSync(body) {
       hostname: DEEPSEEK_BASE,
       path: '/v1/chat/completions',
       method: 'POST',
+      agent: httpsAgent,
       headers: {
         'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
         'Content-Type': 'application/json',
@@ -199,6 +261,7 @@ function streamDeepSeek(chatReq, respId, onEvent) {
       hostname: DEEPSEEK_BASE,
       path: '/v1/chat/completions',
       method: 'POST',
+      agent: httpsAgent,
       headers: {
         'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
         'Content-Type': 'application/json',
@@ -327,6 +390,7 @@ const server = http.createServer((req, res) => {
     https.get({
       hostname: DEEPSEEK_BASE,
       path: '/v1/models',
+      agent: httpsAgent,
       headers: { 'Authorization': `Bearer ${DEEPSEEK_API_KEY}`, 'Accept': 'application/json' },
     }, (dsRes) => {
       res.writeHead(dsRes.statusCode, { 'Content-Type': 'application/json' });

@@ -114,6 +114,21 @@ download() {
   fi
 }
 
+# Windows 下通过系统代理设置检测 HTTPS 代理（供 Node.js 使用）
+detect_windows_https_proxy() {
+  [[ "$OS" == "windows" ]] || return 0
+  has_cmd powershell.exe || return 0
+
+  powershell.exe -NoProfile -Command "
+    \$uri = [Uri]'https://api.deepseek.com';
+    \$proxy = [System.Net.WebRequest]::GetSystemWebProxy();
+    \$p = \$proxy.GetProxy(\$uri);
+    if (\$p -and \$p.AbsoluteUri -and \$p.AbsoluteUri -ne \$uri.AbsoluteUri) {
+      [Console]::Write(\$p.AbsoluteUri)
+    }
+  " 2>/dev/null | tr -d '\r'
+}
+
 # ─── 步骤 1: 检查 Node.js ──────────────────────────────────────────────────────
 check_node() {
   step "检查 Node.js 环境"
@@ -169,8 +184,26 @@ install_proxy() {
     info "使用本地代理文件: $SCRIPT_DIR/proxy/deepseek-proxy.mjs"
     cp "$SCRIPT_DIR/proxy/deepseek-proxy.mjs" "$PROXY_FILE"
   else
-    info "写入内置代理文件（无需联网下载）..."
-    cat > "$PROXY_FILE" << 'PROXY_EOF'
+    info "尝试下载最新版代理文件..."
+    local proxy_tmp
+    local fetched=false
+    proxy_tmp="$(mktemp 2>/dev/null || echo "$CODEX_DIR/deepseek-proxy.tmp")"
+
+    for proxy_url in \
+      "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/proxy/deepseek-proxy.mjs" \
+      "https://ghproxy.cn/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/proxy/deepseek-proxy.mjs" \
+      "https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/proxy/deepseek-proxy.mjs"; do
+      if download "$proxy_url" "$proxy_tmp" 2>/dev/null; then
+        mv "$proxy_tmp" "$PROXY_FILE"
+        fetched=true
+        info "已下载代理文件: $proxy_url"
+        break
+      fi
+    done
+
+    if [[ "$fetched" != "true" ]]; then
+      info "下载失败，回退到内置代理文件..."
+      cat > "$PROXY_FILE" << 'PROXY_EOF'
 /**
  * DeepSeek Proxy for Codex CLI
  * ─────────────────────────────────────────────────────────────────────────────
@@ -631,6 +664,7 @@ server.listen(PORT, '127.0.0.1', () => {
   }
 });
 PROXY_EOF
+    fi
   fi
 
   success "代理文件已写入 $PROXY_FILE ✓"
@@ -710,6 +744,12 @@ configure_auth() {
   while [[ -z "$api_key" ]]; do
     read -r -s -p "  API Key (sk-...): " api_key < /dev/tty || api_key=""
     api_key="${api_key//$'\r'/}"
+    # Strip terminal control chars to avoid invalid JSON in auth.json
+    api_key="$(printf '%s' "$api_key" | tr -d '\000-\037\177')"
+    # If terminal escape noise is prefixed, recover from the last sk- prefix
+    if [[ "$api_key" == *"sk-"* && "$api_key" != sk-* ]]; then
+      api_key="sk-${api_key##*sk-}"
+    fi
     echo
     if [[ -z "$api_key" ]]; then
       warn "API Key 不能为空，请重新输入"
@@ -768,14 +808,33 @@ if [ "$_DS_PORT_IN_USE" = false ] && [ -f "$HOME/.codex/deepseek-proxy.mjs" ]; t
     } catch {}
   " 2>/dev/null)
   if [ -n "$_DS_KEY" ]; then
+    _DS_PROXY=""
+    if command -v powershell.exe >/dev/null 2>&1; then
+      _DS_PROXY=$(powershell.exe -NoProfile -Command "
+        \$uri = [Uri]'https://api.deepseek.com';
+        \$proxy = [System.Net.WebRequest]::GetSystemWebProxy();
+        \$p = \$proxy.GetProxy(\$uri);
+        if (\$p -and \$p.AbsoluteUri -and \$p.AbsoluteUri -ne \$uri.AbsoluteUri) {
+          [Console]::Write(\$p.AbsoluteUri)
+        }
+      " 2>/dev/null | tr -d '\r')
+    fi
     _SCRIPT_PATH="$HOME/.codex/deepseek-proxy.mjs"
     command -v cygpath >/dev/null 2>&1 && _SCRIPT_PATH=$(cygpath -w "$_SCRIPT_PATH")
-    DEEPSEEK_API_KEY="$_DS_KEY" \
-      nohup node "$_SCRIPT_PATH" \
-      >> "$HOME/.codex/proxy.log" 2>&1 &
+    if [ -n "$_DS_PROXY" ]; then
+      HTTPS_PROXY="$_DS_PROXY" HTTP_PROXY="$_DS_PROXY" \
+        DEEPSEEK_API_KEY="$_DS_KEY" \
+        nohup node "$_SCRIPT_PATH" \
+        >> "$HOME/.codex/proxy.log" 2>&1 &
+    else
+      DEEPSEEK_API_KEY="$_DS_KEY" \
+        nohup node "$_SCRIPT_PATH" \
+        >> "$HOME/.codex/proxy.log" 2>&1 &
+    fi
     disown
   fi
   unset _DS_KEY
+  unset _DS_PROXY
 fi
 unset _DS_PORT_IN_USE
 SHELLEOF
@@ -809,12 +868,22 @@ start_proxy() {
 
   local node_script="$PROXY_FILE"
   local log_output="$LOG_FILE"
+  local https_proxy=""
   if [[ "$OS" == "windows" ]]; then
     node_script="$(cygpath -w "$PROXY_FILE")"
     log_output="$(cygpath -w "$LOG_FILE")"
+    https_proxy="$(detect_windows_https_proxy || true)"
+    if [[ -n "$https_proxy" ]]; then
+      info "检测到系统代理: $https_proxy"
+    fi
   fi
 
-  DEEPSEEK_API_KEY="$api_key" nohup node "$node_script" >> "$LOG_FILE" 2>&1 &
+  if [[ -n "$https_proxy" ]]; then
+    HTTPS_PROXY="$https_proxy" HTTP_PROXY="$https_proxy" \
+      DEEPSEEK_API_KEY="$api_key" nohup node "$node_script" >> "$log_output" 2>&1 &
+  else
+    DEEPSEEK_API_KEY="$api_key" nohup node "$node_script" >> "$log_output" 2>&1 &
+  fi
   disown
 
   # 等待代理就绪

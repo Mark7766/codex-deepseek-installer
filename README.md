@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js >= 18](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-blue)](#)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20(Git%20Bash)-blue)](#)
 
 ---
 
@@ -21,7 +21,7 @@
 
 | 要求 | 说明 |
 |------|------|
-| 操作系统 | macOS 12+ 或 Linux (Ubuntu 20.04+, Debian 11+ 等) |
+| 操作系统 | macOS 12+、Linux (Ubuntu 20.04+, Debian 11+ 等) 或 Windows (Git Bash) |
 | Node.js | >= 18（推荐 20 LTS） |
 | npm | 随 Node.js 自带 |
 | DeepSeek API Key | [申请地址](https://platform.deepseek.com/api_keys) |
@@ -174,6 +174,7 @@ bash uninstall.sh
 # 重新加载 shell 配置
 source ~/.zshrc   # zsh 用户
 source ~/.bashrc  # bash 用户
+# Git Bash 用户可执行: source ~/.bashrc
 ```
 
 **Q: 代理报错 `DEEPSEEK_API_KEY not set`？**
