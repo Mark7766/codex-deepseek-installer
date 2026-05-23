@@ -31,8 +31,8 @@
 ### 方式一：一行命令安装（推荐）
 
 ```bash
-# 国内推荐使用 ghproxy 代理加速下载
-curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/install.sh | bash
+# 国内推荐使用 ghproxy 代理加速下载 (增加时间戳或随机参数防止缓存旧版本)
+curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/install.sh?v=$(date +%s)" | bash
 ```
 
 > **提示**：如果 ghproxy 失效，可尝试将 `ghproxy.net` 替换为 `ghproxy.cn`，或使用下方的克隆方式安装。
