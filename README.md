@@ -150,6 +150,17 @@ curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex
 > curl -fsSL "https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/scripts/restart-proxy.sh" | bash
 > ```
 
+### API Key 输入错误？一键重新设置
+
+```bash
+curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/scripts/set-apikey.sh" | bash
+```
+
+> 若 ghproxy 不可用：
+> ```bash
+> curl -fsSL "https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/scripts/set-apikey.sh" | bash
+> ```
+
 ---
 
 ```bash
@@ -167,9 +178,6 @@ kill $(lsof -ti:11435)
 
 # 手动启动代理
 DEEPSEEK_API_KEY=sk-xxx node ~/.codex/deepseek-proxy.mjs &
-
-# 更新 API Key
-# 编辑 ~/.codex/auth.json，然后重启代理
 ```
 
 ## 🗑️ 卸载
