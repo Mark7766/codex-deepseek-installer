@@ -129,61 +129,104 @@ openai_base_url = "http://127.0.0.1:11435/v1"
 }
 ```
 
-## 🔧 代理管理
+## 🔧 常用操作
 
-### 代理无法连接？一键重启
-
-当出现以下错误时：
-
-```
-ERROR: No connection could be made because the target machine actively refused it. (os error 10061)
-```
-
-在 Git Bash 中执行：
-
-```bash
-curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/scripts/restart-proxy.sh" | bash
-```
-
-> 若 ghproxy 不可用，直接用：
-> ```bash
-> curl -fsSL "https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/scripts/restart-proxy.sh" | bash
-> ```
-
-### API Key 输入错误？一键重新设置
-
-```bash
-curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/scripts/set-apikey.sh" | bash
-```
-
-> 若 ghproxy 不可用：
-> ```bash
-> curl -fsSL "https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/scripts/set-apikey.sh" | bash
-> ```
+> 所有 `curl` 命令均使用 **ghproxy.net** 代理加速（国内直连），URL 末尾附加 `?v=$(date +%s)` 时间戳，防止 CDN 缓存旧版本。
 
 ---
 
+### 📦 安装
+
 ```bash
-# 检查安装状态
-bash scripts/check.sh
-
-# 查看代理是否运行
-lsof -ti:11435
-
-# 查看代理日志
-tail -f ~/.codex/proxy.log
-
-# 手动停止代理
-kill $(lsof -ti:11435)
-
-# 手动启动代理
-DEEPSEEK_API_KEY=sk-xxx node ~/.codex/deepseek-proxy.mjs &
+curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/install.sh?v=$(date +%s)" | bash
 ```
 
-## 🗑️ 卸载
+---
+
+### 🗑️ 卸载
 
 ```bash
-bash uninstall.sh
+curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/uninstall.sh?v=$(date +%s)" | bash
+```
+
+> 卸载会移除 `~/.codex/` 目录、codex 全局包，并清理 shell 配置中的自动启动片段。
+
+---
+
+### ⏹️ 停止代理（Kill 代理进程）
+
+**macOS / Linux：**
+
+```bash
+kill $(lsof -ti:11435) 2>/dev/null; echo "代理已停止"
+```
+
+**Windows Git Bash：**
+
+```bash
+netstat -ano | grep LISTENING | grep :11435 | awk '{print $5}' | xargs -I{} taskkill //PID {} //F 2>/dev/null; echo "代理已停止"
+```
+
+---
+
+### ▶️ 启动 / 重启代理
+
+代理随每次新终端自动启动，**打开新终端** 是最简单的重启方式。也可手动触发：
+
+**macOS / Linux：**
+
+```bash
+# zsh 用户
+source ~/.zshrc
+# bash 用户
+source ~/.bashrc
+```
+
+**Windows Git Bash：**
+
+```bash
+source ~/.bashrc
+```
+
+---
+
+### 🔁 重新安装（一键完整流程）
+
+> **适用场景**：升级到最新版、修复安装异常、更换 API Key 或模型。
+>
+> 执行顺序：**停止代理 → 卸载 → 安装 → 自动验证**
+
+**macOS / Linux：**
+
+```bash
+kill $(lsof -ti:11435) 2>/dev/null; sleep 1; \
+curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/uninstall.sh?v=$(date +%s)" | bash; \
+curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/install.sh?v=$(date +%s)" | bash
+```
+
+**Windows Git Bash：**
+
+```bash
+netstat -ano | grep LISTENING | grep :11435 | awk '{print $5}' | xargs -I{} taskkill //PID {} //F 2>/dev/null; sleep 2; \
+curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/uninstall.sh?v=$(date +%s)" | bash; \
+curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/install.sh?v=$(date +%s)" | bash
+```
+
+---
+
+### 📋 查看状态 / 日志
+
+```bash
+# 检查安装完整性
+curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/scripts/check.sh?v=$(date +%s)" | bash
+
+# 检查代理端口（macOS/Linux）
+lsof -ti:11435
+# 检查代理端口（Windows）
+netstat -ano | findstr :11435
+
+# 实时查看代理日志
+tail -f ~/.codex/proxy.log
 ```
 
 ## 🤝 兼容的 AI 编程工具
