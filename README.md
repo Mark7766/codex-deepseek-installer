@@ -145,8 +145,11 @@ curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex
 
 ### 🗑️ 卸载
 
+> **注意**：卸载脚本有交互确认步骤，必须先下载再执行（不能直接 `curl | bash`，否则交互输入异常）。
+
 ```bash
-curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/uninstall.sh?v=$(date +%s)" | bash
+# 先下载，再执行（macOS / Linux / Windows Git Bash 通用）
+curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/uninstall.sh?v=$(date +%s)" -o /tmp/codex-uninstall.sh && bash /tmp/codex-uninstall.sh
 ```
 
 > 卸载会移除 `~/.codex/` 目录、codex 全局包，并清理 shell 配置中的自动启动片段。
@@ -194,23 +197,25 @@ source ~/.bashrc
 
 > **适用场景**：升级到最新版、修复安装异常、更换 API Key 或模型。
 >
-> 执行顺序：**停止代理 → 卸载 → 安装 → 自动验证**
+> 执行顺序：**停止代理 → 卸载（自动全确认） → 安装（交互输入 Key/模型）**
 
 **macOS / Linux：**
 
 ```bash
 kill $(lsof -ti:11435) 2>/dev/null; sleep 1; \
-curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/uninstall.sh?v=$(date +%s)" | bash; \
-curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/install.sh?v=$(date +%s)" | bash
+curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/uninstall.sh?v=$(date +%s)" | bash -s -- -y; \
+curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/install.sh?v=$(date +%s)" -o /tmp/codex-install.sh && bash /tmp/codex-install.sh
 ```
 
 **Windows Git Bash：**
 
 ```bash
 netstat -ano | grep LISTENING | grep :11435 | awk '{print $5}' | xargs -I{} taskkill //PID {} //F 2>/dev/null; sleep 2; \
-curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/uninstall.sh?v=$(date +%s)" | bash; \
-curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/install.sh?v=$(date +%s)" | bash
+curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/uninstall.sh?v=$(date +%s)" | bash -s -- -y; \
+curl -fsSL "https://ghproxy.net/https://raw.githubusercontent.com/Mark7766/codex-deepseek-installer/main/install.sh?v=$(date +%s)" -o /tmp/codex-install.sh && bash /tmp/codex-install.sh
 ```
+
+> 卸载步骤使用 `-y` 静默全自动模式（无需手动确认），安装步骤下载到本地后再执行（支持交互输入 API Key）。
 
 ---
 

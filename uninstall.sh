@@ -2,6 +2,10 @@
 # =============================================================================
 #  Codex × DeepSeek 卸载脚本
 #  https://github.com/Mark7766/codex-deepseek-installer
+#
+#  用法:
+#    bash uninstall.sh          # 交互模式（逐步确认）
+#    bash uninstall.sh -y       # 静默模式（全部自动确认，适合脚本调用）
 # =============================================================================
 set -euo pipefail
 
@@ -15,13 +19,29 @@ warn()    { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 CODEX_DIR="$HOME/.codex"
 PROXY_PORT=11435
 
+# -y / --yes 静默模式：跳过所有交互确认，自动执行全部步骤
+AUTO_YES=false
+for arg in "$@"; do
+  [[ "$arg" == "-y" || "$arg" == "--yes" ]] && AUTO_YES=true
+done
+
+# 交互确认辅助函数：静默模式直接返回 true
+confirm() {
+  local prompt="$1"
+  if [[ "$AUTO_YES" == "true" ]]; then
+    echo "  (自动确认: $prompt)"
+    return 0
+  fi
+  local ans
+  read -r -p "$prompt [y/N] " ans < /dev/tty || ans="N"
+  ans="${ans//$'\r'/}"
+  [[ "$ans" =~ ^[Yy]$ ]]
+}
+
 echo -e "${BOLD}Codex × DeepSeek 卸载程序${NC}"
 echo
 
-# 确认
-read -r -p "确认卸载 Codex CLI 和 DeepSeek 代理？[y/N] " yn < /dev/tty || yn="N"
-yn="${yn//$'\r'/}"
-[[ "$yn" =~ ^[Yy]$ ]] || { echo "已取消"; exit 0; }
+confirm "确认卸载 Codex CLI 和 DeepSeek 代理？" || { echo "已取消"; exit 0; }
 
 # 1. 停止代理
 info "停止 DeepSeek 代理（如已运行）..."
@@ -39,7 +59,6 @@ success "代理已停止 ✓"
 for rc_file in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.profile"; do
   if [[ -f "$rc_file" ]] && grep -q "codex-deepseek-proxy auto-start" "$rc_file"; then
     info "从 $rc_file 移除自动启动配置..."
-    # 删除从 marker 注释到结束标记之间的内容（与 install.sh 保持一致）
     if [[ "$(uname -s)" == "Darwin" ]]; then
       sed -i '' '/# codex-deepseek-proxy auto-start/,/^unset _DS_PORT_IN_USE$/d' "$rc_file"
     else
@@ -50,18 +69,14 @@ for rc_file in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.profile"; do
 done
 
 # 3. 卸载 Codex CLI
-read -r -p "是否同时卸载 Codex CLI (npm uninstall -g @openai/codex)？[y/N] " yn2 < /dev/tty || yn2="N"
-yn2="${yn2//$'\r'/}"
-if [[ "$yn2" =~ ^[Yy]$ ]]; then
+if confirm "是否同时卸载 Codex CLI (npm uninstall -g @openai/codex)？"; then
   info "卸载 Codex CLI..."
   npm uninstall -g @openai/codex 2>/dev/null || warn "Codex CLI 卸载失败（可能未安装）"
   success "Codex CLI 已卸载 ✓"
 fi
 
 # 4. 删除 ~/.codex 目录
-read -r -p "是否删除 ~/.codex 目录（包含 API Key 和代理文件）？[y/N] " yn3 < /dev/tty || yn3="N"
-yn3="${yn3//$'\r'/}"
-if [[ "$yn3" =~ ^[Yy]$ ]]; then
+if confirm "是否删除 ~/.codex 目录（包含 API Key 和代理文件）？"; then
   warn "正在删除 $CODEX_DIR ..."
   rm -rf "$CODEX_DIR"
   success "~/.codex 已删除 ✓"
