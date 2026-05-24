@@ -237,6 +237,11 @@ import { createRequire } from 'node:module';
 
 // Load ws from the local node_modules next to this file (installed by installer)
 const _require = createRequire(import.meta.url);
+
+// Windows / corporate networks often have certificate chains that Node.js
+// built-in CA bundle does not trust (Windows uses its own cert store).
+// Use a permissive agent for all upstream DeepSeek calls.
+const dsAgent = new https.Agent({ rejectUnauthorized: false });
 const { WebSocketServer } = _require('ws');
 
 const DEEPSEEK_BASE = 'api.deepseek.com';
@@ -373,6 +378,7 @@ function callDeepSeekSync(body) {
       hostname: DEEPSEEK_BASE,
       path: '/v1/chat/completions',
       method: 'POST',
+      agent: dsAgent,
       headers: {
         'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
         'Content-Type': 'application/json',
@@ -405,6 +411,7 @@ function streamDeepSeek(chatReq, respId, onEvent) {
       hostname: DEEPSEEK_BASE,
       path: '/v1/chat/completions',
       method: 'POST',
+      agent: dsAgent,
       headers: {
         'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
         'Content-Type': 'application/json',
@@ -533,6 +540,7 @@ const server = http.createServer((req, res) => {
     https.get({
       hostname: DEEPSEEK_BASE,
       path: '/v1/models',
+      agent: dsAgent,
       headers: { 'Authorization': `Bearer ${DEEPSEEK_API_KEY}`, 'Accept': 'application/json' },
     }, (dsRes) => {
       res.writeHead(dsRes.statusCode, { 'Content-Type': 'application/json' });
