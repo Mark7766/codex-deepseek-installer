@@ -241,7 +241,10 @@ const _require = createRequire(import.meta.url);
 // Windows / corporate networks often have certificate chains that Node.js
 // built-in CA bundle does not trust (Windows uses its own cert store).
 // Use a permissive agent for all upstream DeepSeek calls.
-const dsAgent = new https.Agent({ rejectUnauthorized: false });
+// keepAlive + timeout: abort stalled connections after 30 s so Codex doesn't
+// hang indefinitely when api.deepseek.com is unreachable.
+const dsAgent = new https.Agent({ rejectUnauthorized: false, keepAlive: true, timeout: 30000 });
+const DS_TIMEOUT_MS = 30000; // 30 s request timeout
 const { WebSocketServer } = _require('ws');
 
 const DEEPSEEK_BASE = 'api.deepseek.com';
@@ -379,6 +382,7 @@ function callDeepSeekSync(body) {
       path: '/v1/chat/completions',
       method: 'POST',
       agent: dsAgent,
+      timeout: DS_TIMEOUT_MS,
       headers: {
         'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
         'Content-Type': 'application/json',
@@ -392,6 +396,7 @@ function callDeepSeekSync(body) {
         catch (e) { reject(new Error(`Parse: ${e.message}`)); }
       });
     });
+    req.on('timeout', () => req.destroy(new Error('api.deepseek.com 连接超时（30s），请检查网络或代理设置')));
     req.on('error', reject);
     req.write(data);
     req.end();
@@ -412,6 +417,7 @@ function streamDeepSeek(chatReq, respId, onEvent) {
       path: '/v1/chat/completions',
       method: 'POST',
       agent: dsAgent,
+      timeout: DS_TIMEOUT_MS,
       headers: {
         'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
         'Content-Type': 'application/json',
@@ -524,6 +530,7 @@ function streamDeepSeek(chatReq, respId, onEvent) {
       dsRes.on('error', reject);
     });
 
+    req.on('timeout', () => req.destroy(new Error('api.deepseek.com 连接超时（30s），请检查网络')));
     req.on('error', reject);
     req.write(data);
     req.end();
